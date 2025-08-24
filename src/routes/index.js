@@ -3,6 +3,7 @@ import { Router } from "express";
 // Sub-routes
 
 import authRoutes from "./auth.js";
+import productRoutes from "./product.js";
 
 
 
@@ -10,7 +11,7 @@ const routes = Router();
 
 // === Route chính ===
 routes.use("/", authRoutes);
-
+routes.use("/products", productRoutes);;
 
 
 // === Test route trang chủ BE (không ảnh hưởng FE) ===
