@@ -3,20 +3,7 @@ import Product from "../models/Product.js";
 import Order from "../models/order.js";
 import UserVoucher from "../models/UserVoucher.js";
 
-// [GET] /api/orders
-// export const getAllOrders = async (req, res, next) => {
-//   try {
-//     const orders = await Order.find()
-//       .populate("userId", "fullname email")
-//       .populate("orderItems.productId", "name image price")
-//       .sort({ createdAt: -1 });
 
-//     res.json({ success: true, data: orders });
-//   } catch (error) {
-//     console.error("Lỗi getAllOrders:", error);
-//     next(error);
-//   }
-// };
 export const getAllOrders = async (req, res, next) => {
   try {
     let query = Order.find();
