@@ -14,7 +14,7 @@ import searchRoutes from "./search.js";
 import userVoucherRoutes from "./userVoucherRoutes.js";
 import contactRoutes from "./contact.js"; // 👈 import thêm
 import commentRoutes from "./comment.js";// 👈 import thêm
-
+import searchRoutes from "./search.js";
 
 const routes = Router();
 
@@ -32,7 +32,7 @@ routes.use("/search", searchRoutes);
 routes.use("/voucher", userVoucherRoutes);
 routes.use("/contact", contactRoutes); // 👈 gắn route liên hệ
 routes.use("/comments", commentRoutes);
-
+routes.use("/search", searchRoutes);
 
 
 // === Test route trang chủ BE (không ảnh hưởng FE) ===
