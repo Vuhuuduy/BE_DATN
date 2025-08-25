@@ -6,7 +6,8 @@ import {
   deleteComment,
   getAllComments,
   likeComment,
-  replyComment
+  replyComment,
+  deleteReply
 } from "../controllers/commentController.js";
 
 const commentRoutes = express.Router();
@@ -28,5 +29,10 @@ commentRoutes.patch("/:id/like", verifyToken, likeComment);
 
 // Trả lời bình luận
 commentRoutes.post("/:id/reply", verifyToken, replyComment);
+
+
+// Xóa trả lời bình luận
+commentRoutes.delete("/:commentId/replies/:replyId", verifyToken, isAdmin, deleteReply);
+
 
 export default commentRoutes;

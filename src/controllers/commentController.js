@@ -14,6 +14,8 @@ export const getAllComments = async (req, res) => {
     const comments = await Comment.find(searchQuery)
       .populate("userId", "fullname email")
       .populate("productId", "name slug")
+       .populate("replies.userId", "fullname email") 
+
       .sort({ createdAt: -1 })
       .skip(Number(skip))
       .limit(Number(limit));
@@ -48,6 +50,7 @@ export const getCommentsByProduct = async (req, res) => {
     const comments = await Comment.find({ productId })
       .populate("userId", "fullname")
       .populate("replies.userId", "fullname")
+       .populate("replies.userId", "fullname email") 
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, data: comments });
@@ -80,10 +83,15 @@ export const deleteComment = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user?.id;
+    const userRole = req.user?.role; // lấy role từ token
 
     const comment = await Comment.findById(id);
     if (!comment) return res.status(404).json({ success: false, message: "Không tìm thấy bình luận" });
-    if (comment.userId.toString() !== userId) return res.status(403).json({ success: false, message: "Không có quyền xóa" });
+
+    // Cho phép xóa nếu là admin hoặc là người tạo bình luận
+    if (comment.userId.toString() !== userId && userRole !== "admin") {
+      return res.status(403).json({ success: false, message: "Không có quyền xóa" });
+    }
 
     await Comment.findByIdAndDelete(id);
     res.status(200).json({ success: true, message: "Xóa bình luận thành công" });
@@ -92,6 +100,7 @@ export const deleteComment = async (req, res) => {
     res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };
+
 
 // Like comment
 export const likeComment = async (req, res) => {
@@ -133,5 +142,31 @@ export const replyComment = async (req, res) => {
   } catch (error) {
     console.error("replyComment error:", error);
     res.status(500).json({ message: "Lỗi server" });
+  }
+};
+// Xóa trả lời comment
+
+export const deleteReply = async (req, res) => {
+  try {
+    const { commentId, replyId } = req.params;
+
+    const comment = await Comment.findById(commentId);
+    if (!comment) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy bình luận" });
+    }
+
+    // Tìm index của reply
+    const replyIndex = comment.replies.findIndex(r => r._id.toString() === replyId);
+    if (replyIndex === -1) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy trả lời" });
+    }
+
+    comment.replies.splice(replyIndex, 1);
+    await comment.save();
+
+    res.status(200).json({ success: true, message: "Xóa trả lời thành công" });
+  } catch (error) {
+    console.error("deleteReply error:", error);
+    res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };
