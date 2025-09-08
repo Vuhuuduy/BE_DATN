@@ -18,6 +18,6 @@ discountRoutes.post("/add", addDiscount);
 discountRoutes.put("/:id", updateDiscount);
 discountRoutes.delete("/:id", deleteDiscount);
 
-discountRoutes.patch("/discounts/:id/toggle", toggleDiscountStatus) //
+discountRoutes.patch("/:id/toggle", toggleDiscountStatus) //
 
 export default discountRoutes;
