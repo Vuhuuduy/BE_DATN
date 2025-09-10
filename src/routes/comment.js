@@ -7,7 +7,9 @@ import {
   getAllComments,
   likeComment,
   replyComment,
-  deleteReply
+  deleteReply,
+  toggleHideComment, 
+  toggleHideReply
 } from "../controllers/commentController.js";
 
 const commentRoutes = express.Router();
@@ -34,5 +36,8 @@ commentRoutes.post("/:id/reply", verifyToken, replyComment);
 // Xóa trả lời bình luận
 commentRoutes.delete("/:commentId/replies/:replyId", verifyToken, isAdmin, deleteReply);
 
+
+commentRoutes.patch("/:id", toggleHideComment);
+commentRoutes.patch("/:commentId/replies/:replyId", toggleHideReply);
 
 export default commentRoutes;

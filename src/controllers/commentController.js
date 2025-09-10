@@ -14,7 +14,15 @@ export const getAllComments = async (req, res) => {
     const comments = await Comment.find(searchQuery)
       .populate("userId", "fullname email")
       .populate("productId", "name slug")
-       .populate("replies.userId", "fullname email") 
+         .populate({
+        path: "replies.userId", // người viết reply
+        select: "fullname email",
+      })
+      .populate({
+        path: "replies.replyTo", // trả lời ai
+        populate: { path: "userId", select: "fullname email" }, // lấy user của reply được trả lời
+        select: "content userId", // lấy cả nội dung + userId
+      })
 
       .sort({ createdAt: -1 })
       .skip(Number(skip))
@@ -50,7 +58,7 @@ export const getCommentsByProduct = async (req, res) => {
     const comments = await Comment.find({ productId })
       .populate("userId", "fullname")
       .populate("replies.userId", "fullname")
-       .populate("replies.userId", "fullname email") 
+      .populate("replies.userId", "fullname email") 
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, data: comments });
@@ -103,40 +111,52 @@ export const deleteComment = async (req, res) => {
 
 
 // Like comment
+// PATCH /comments/:id/like
 export const likeComment = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user._id; // lấy từ token
+
     const comment = await Comment.findById(id);
-    if (!comment) return res.status(404).json({ message: "Không tìm thấy bình luận" });
+    if (!comment) return res.status(404).json({ message: "Comment không tồn tại" });
 
-    comment.helpful += 1;
+    // Check user đã like chưa
+    if (comment.likedBy.includes(userId)) {
+      return res.status(400).json({ message: "Bạn đã like bình luận này rồi" });
+    }
+
+    comment.likedBy.push(userId);
+    comment.helpful = comment.likedBy.length;
+
     await comment.save();
-
-    res.json({ message: "Đã like", helpful: comment.helpful });
-  } catch (error) {
-    console.error("likeComment error:", error);
-    res.status(500).json({ message: "Lỗi server" });
+    res.json({ helpful: comment.helpful });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi server", error: err.message });
   }
 };
+
 
 // Trả lời comment
 export const replyComment = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { content } = req.body;
+    const { id } = req.params; // id của comment gốc
+    const { content, replyTo } = req.body; // replyTo = userId của người được trả lời
     const userId = req.user?.id;
 
-    if (!content || content.trim() === "") return res.status(400).json({ success: false, message: "Nội dung trả lời là bắt buộc" });
+    if (!content || content.trim() === "") {
+      return res.status(400).json({ success: false, message: "Nội dung trả lời là bắt buộc" });
+    }
 
     const comment = await Comment.findById(id);
     if (!comment) return res.status(404).json({ message: "Không tìm thấy bình luận" });
 
-    comment.replies.push({ userId, content: content.trim() });
+    comment.replies.push({ userId, content: content.trim(), replyTo });
     await comment.save();
 
     const updatedComment = await Comment.findById(id)
       .populate("userId", "fullname")
-      .populate("replies.userId", "fullname");
+      .populate("replies.userId", "fullname")
+      .populate("replies.replyTo", "fullname"); // ✅ populate luôn người được trả lời
 
     res.json({ message: "Đã trả lời", comment: updatedComment });
   } catch (error) {
@@ -144,6 +164,7 @@ export const replyComment = async (req, res) => {
     res.status(500).json({ message: "Lỗi server" });
   }
 };
+
 // Xóa trả lời comment
 
 export const deleteReply = async (req, res) => {
@@ -167,6 +188,51 @@ export const deleteReply = async (req, res) => {
     res.status(200).json({ success: true, message: "Xóa trả lời thành công" });
   } catch (error) {
     console.error("deleteReply error:", error);
+    res.status(500).json({ success: false, message: "Lỗi server" });
+  }
+};
+
+// Ẩn/hiện comment
+export const toggleHideComment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isHidden } = req.body;
+
+    const comment = await Comment.findByIdAndUpdate(
+      id,
+      { isHidden },
+      { new: true }
+    );
+
+    if (!comment) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy bình luận" });
+    }
+
+    res.status(200).json({ success: true, message: "Cập nhật trạng thái thành công", data: comment });
+  } catch (error) {
+    console.error("toggleHideComment error:", error);
+    res.status(500).json({ success: false, message: "Lỗi server" });
+  }
+};
+
+// Ẩn/hiện reply
+export const toggleHideReply = async (req, res) => {
+  try {
+    const { commentId, replyId } = req.params;
+    const { isHidden } = req.body;
+
+    const comment = await Comment.findById(commentId);
+    if (!comment) return res.status(404).json({ success: false, message: "Không tìm thấy bình luận" });
+
+    const reply = comment.replies.id(replyId);
+    if (!reply) return res.status(404).json({ success: false, message: "Không tìm thấy trả lời" });
+
+    reply.isHidden = isHidden;
+    await comment.save();
+
+    res.status(200).json({ success: true, message: "Cập nhật trạng thái trả lời thành công", data: reply });
+  } catch (error) {
+    console.error("toggleHideReply error:", error);
     res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };

@@ -24,18 +24,18 @@ const commentSchema = new mongoose.Schema(
       required: true,
     },
      helpful: { type: Number, default: 0 }, // đếm số lượt like
+      isHidden: { type: Boolean, default: false },
+        likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   replies: [
     {
       userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       content: String,
-      createdAt: { type: Date, default: Date.now }
+      replyTo: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      createdAt: { type: Date, default: Date.now },
+       isHidden: { type: Boolean, default: false },
     }
   ],
-   status: { 
-      type: String, 
-      enum: ["active", "hidden"], 
-      default: "active" 
-    } // <-- thêm trạng thái ẩn/hiện
+
 
   },
   { timestamps: true }
