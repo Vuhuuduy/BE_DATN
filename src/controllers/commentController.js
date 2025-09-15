@@ -1,15 +1,38 @@
 import Comment from "../models/comment.js";
+import User from "../models/User.js";
+import Product from "../models/Product.js";
 
 // Lấy tất cả bình luận (Admin) với phân trang và tìm kiếm
 export const getAllComments = async (req, res) => {
-  try {
-    const { page = 1, limit = 10, keyword = "" } = req.query;
-
-    const searchQuery = keyword
-      ? { content: { $regex: keyword, $options: "i" } }
-      : {};
-
+   try {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const keyword = req.query.keyword?.trim() || "";
     const skip = (page - 1) * limit;
+
+    let searchQuery = {};
+
+    if (keyword) {
+      // Tìm user theo tên
+      const users = await User.find({
+        fullname: { $regex: keyword, $options: "i" }
+      }).select("_id");
+
+      // Tìm product theo tên
+      const products = await Product.find({
+        name: { $regex: keyword, $options: "i" }
+      }).select("_id");
+
+      searchQuery = {
+        $or: [
+          { content: { $regex: keyword, $options: "i" } },
+          { userId: { $in: users.map(u => u._id) } },
+          { productId: { $in: products.map(p => p._id) } }
+        ]
+      };
+    }
+
+  
 
     const comments = await Comment.find(searchQuery)
       .populate("userId", "fullname email")
