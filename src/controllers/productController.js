@@ -4,16 +4,35 @@ import Variant from "../models/variant.js"; // thêm vào đây
 import mongoose from "mongoose";
 
 // Lấy tất cả sản phẩm
+import Comment from "../models/comment.js";
+
 export const getAllProducts = async (req, res, next) => {
   try {
-    const products = await Product.find()
-      .populate("category", "name status");
+    const products = await Product.find().populate("category", "name status");
 
-    res.json({ success: true, data: products });
+    const productsWithRating = await Promise.all(
+      products.map(async (prod) => {
+        const comments = await Comment.find({ productId: prod._id });
+        const totalReviews = comments.length;
+        const avgRating =
+          totalReviews > 0
+            ? comments.reduce((sum, c) => sum + c.rating, 0) / totalReviews
+            : 0;
+
+        return {
+          ...prod.toObject(),
+          rating: avgRating,
+          reviews: totalReviews,
+        };
+      })
+    );
+
+    res.json({ success: true, data: productsWithRating });
   } catch (error) {
     next(error);
   }
 };
+
 
 // Lấy sản phẩm theo ID (có kèm variants)
 export const getProductById = async (req, res, next) => {
@@ -67,7 +86,8 @@ export const getProductsByCategorySlug = async (req, res, next) => {
 // Thêm sản phẩm mới
 export const addProduct = async (req, res, next) => {
   try {
-    const { name, price, description, category, imageUrl, variants } = req.body;
+     console.log("Received body:", req.body); // 🟢 log dữ liệu từ FE gửi lên
+    const { name, price, description, category, imageUrl, stock,  variants } = req.body;
 
     if (!name || !price || !category) {
       return res.status(400).json({
@@ -96,7 +116,10 @@ export const addProduct = async (req, res, next) => {
       price,
       description,
       category,
-      imageUrl
+      imageUrl,
+       stock, 
+       variants 
+ 
     });
 
     await newProduct.save();
@@ -116,6 +139,7 @@ export const addProduct = async (req, res, next) => {
       data: newProduct
     });
   } catch (error) {
+      console.error("Error while adding product:", error); // 🟢 log lỗi chi tiết
     next(error);
   }
 };
@@ -123,46 +147,54 @@ export const addProduct = async (req, res, next) => {
 // Cập nhật sản phẩm
 export const updateProduct = async (req, res, next) => {
   try {
-    const { category } = req.body;
+    const { category, stock } = req.body;
 
+    // Check danh mục
     if (category) {
       const foundCategory = await Category.findById(category);
       if (!foundCategory) {
         return res.status(400).json({
           success: false,
-          message: "Danh mục không tồn tại"
+          message: "Danh mục không tồn tại",
         });
       }
       if (foundCategory.status !== "active") {
         return res.status(400).json({
           success: false,
-          message: "Danh mục đã bị khóa, không thể cập nhật sản phẩm vào danh mục này"
+          message: "Danh mục đã bị khóa, không thể cập nhật sản phẩm vào danh mục này",
         });
       }
     }
 
+    // Check id hợp lệ
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ success: false, message: "ID không hợp lệ" });
     }
+
+    
+   
 
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
-    );
+    ).populate("category", "name status");
 
     if (!updatedProduct) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy sản phẩm"
+        message: "Không tìm thấy sản phẩm",
       });
     }
 
     res.json({ success: true, data: updatedProduct });
   } catch (error) {
-    next(error);
+    console.error("Update product error:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
 
 // Xoá sản phẩm
 export const deleteProduct = async (req, res, next) => {
