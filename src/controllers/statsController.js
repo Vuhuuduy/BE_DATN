@@ -74,3 +74,32 @@ export const getTopProducts = async (req, res) => {
     res.status(500).json({ message: "Lỗi server", error: err.message });
   }
 };
+
+
+
+export const getRevenueByMonth = async (req, res) => {
+  try {
+    const revenueData = await Order.aggregate([
+      { $match: { status: "Đã hoàn thành" } },
+      {
+        $group: {
+          _id: { $month: "$createdAt" }, // 👈 lấy tháng số (1-12)
+          revenue: { $sum: "$totalAmount" },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+  const formatted = revenueData.map((item) => ({
+  month: `Tháng ${item._id}`,
+  revenue: item.revenue,
+}));
+
+
+    res.json(formatted);
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi server", error: err.message });
+  }
+};
+
+
